@@ -279,7 +279,7 @@ class Walletd:
         return r
 
     def create_delayed_transaction(self, transfers, anonymity=3, fee=10,
-                                   addresses='', change_address='',
+                                   addresses=[], change_address='',
                                    extra='', payment_id='', unlock_time=0):
         params = {'addresses': addresses,
                   'transfers': transfers,
