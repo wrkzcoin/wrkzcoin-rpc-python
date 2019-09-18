@@ -1,5 +1,5 @@
 from .walletd import Walletd  # noqa
-from .turtlecoind import TurtleCoind  # noqa
+from .wrkzd import Wrkzd  # noqa
 from .__version__ import __version__  # noqa
 
 import logging

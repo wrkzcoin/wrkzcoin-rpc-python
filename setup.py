@@ -12,11 +12,11 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = 'turtlecoin'
-DESCRIPTION = 'A Python wrapper for the TurtleCoin JSON-RPC interface'
-URL = 'https://github.com/arthurk/turtlecoin-python/'
-EMAIL = 'arthur@arthurkoziel.com'
-AUTHOR = 'Arthur Koziel'
+NAME = 'wrkzcoin'
+DESCRIPTION = 'A Python wrapper for the WrkzCoin JSON-RPC interface'
+URL = 'https://github.com/wrkzcoin/wrkzcoin-rpc-python/'
+EMAIL = 'team@wrkz.work'
+AUTHOR = 'WrkzCoin Team'
 REQUIRES_PYTHON = '>=3.6.0'
 VERSION = None
 
