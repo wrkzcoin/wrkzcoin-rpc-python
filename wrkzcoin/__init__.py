@@ -1,5 +1,5 @@
 from .walletd import Walletd  # noqa
-from .wrkzd import Wrkzd  # noqa
+from .daemon import Daemon  # noqa
 from .__version__ import __version__  # noqa
 
 import logging

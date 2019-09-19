@@ -1,10 +1,11 @@
 import logging
 
-import requests
+import aiohttp
+import asyncio
 import json
 
 
-class Wrkzd:
+class Daemon:
     """
     Integrates with JSON-RPC interface of `Wrkzd`.
     """
@@ -13,28 +14,35 @@ class Wrkzd:
         self.url = f'http://{host}:{port}'
         self.headers = {'content-type': 'application/json'}
 
-    def _make_request(self, method, **kwargs):
+    async def _make_post(self, method, **kwargs):
         post_url = self.url +'/json_rpc'
         payload = {
             'jsonrpc': '2.0',
             'method': method,
-            'params': kwargs,
+            'params': kwargs or {}
         }
         logging.debug(json.dumps(payload, indent=4))
-        response = requests.post(post_url,
-                                 data=json.dumps(payload),
-                                 headers=self.headers).json()
-        if 'error' in response:
-            raise ValueError(response['error'])
-        return response
+        async with aiohttp.ClientSession(headers=self.headers) as session:
+            async with session.post(post_url, ssl=False, json=payload) as response:
+                if response.status == 200:
+                    response_data = await response.json()
+                    await session.close()
+                    if 'error' in response_data:
+                        raise ValueError(response_data['error'])
+                    return response_data
 
-    def _make_get_request(self, method):
+
+    async def _make_get_request(self, method):
         get_url = self.url + '/' + method
+        async with aiohttp.ClientSession(headers=self.headers) as session:
+            async with session.get(get_url, ssl=False) as response:
+                if response.status == 200:
+                    response_data = await response.json()
+                    await session.close()
+                    return response_data
 
-        response = requests.get(get_url)
-        return response.json()
 
-    def get_height(self):
+    async def get_height(self):
         """
         Returns current chain height
 
@@ -49,7 +57,8 @@ class Wrkzd:
         """
         return self._make_get_request('getheight')
 
-    def get_info(self):
+
+    async def get_info(self):
         """
         Returns information of network and connection
 
@@ -87,7 +96,8 @@ class Wrkzd:
         """
         return self._make_get_request('getinfo')
 
-    def get_transactions(self):
+
+    async def get_transactions(self):
         """
         Returns array of missed transactions
 
@@ -101,7 +111,8 @@ class Wrkzd:
         """
         return self._make_get_request('gettransactions')
 
-    def get_peers(self):
+
+    async def get_peers(self):
         """
         Returns array of peers connected to the daemon
 
@@ -118,7 +129,8 @@ class Wrkzd:
         """
         return self._make_get_request('getpeers')
 
-    def get_fee_info(self):
+
+    async def get_fee_info(self):
         """
         Returns information on fee set by remote node
 
@@ -132,7 +144,8 @@ class Wrkzd:
         """
         return self._make_get_request('feeinfo')
 
-    def get_block_count(self):
+
+    async def get_block_count(self):
         """
         Returns current chain height.
 
@@ -147,9 +160,10 @@ class Wrkzd:
                 }
             }
         """
-        return self._make_request('getblockcount')
-    
-    def get_block_hash(self, block_hash):
+        return await self._make_post('getblockcount')
+
+
+    async def get_block_hash(self, block_hash):
         """
         Returns block hash for a given height off by one
         
@@ -169,14 +183,18 @@ class Wrkzd:
             'method': 'on_getblockhash',
             'params': [block_hash]
         }
-        response = requests.post(self.url,
-                                 data=json.dumps(payload),
-                                 headers=self.headers).json()
-        if 'error' in response:
-            raise ValueError(response['error'])
-        return response
 
-    def get_block_template(self, reserve_size, wallet_address):
+        async with aiohttp.ClientSession(headers=self.headers) as session:
+            async with session.post(self.url, ssl=False, json=payload) as response:
+                if response.status == 200:
+                    response_data = await response.json()
+                    await session.close()
+                    if 'error' in response_data:
+                        raise ValueError(response_data['error'])
+                    return response_data
+
+
+    async def get_block_template(self, reserve_size, wallet_address):
         """
         Returns blocktemplate with an empty "hole" for nonce.
 
@@ -197,9 +215,10 @@ class Wrkzd:
         """
         params = {'reserve_size': reserve_size,
                   'wallet_address': wallet_address}
-        return self._make_request('getblocktemplate', **params)
-    
-    def submit_block(self, block_blob):
+        return await self._make_post('getblocktemplate', **params)
+
+
+    async def submit_block(self, block_blob):
         """
         Submits a block
         
@@ -221,14 +240,17 @@ class Wrkzd:
             'method': 'submitblock',
             'params': [block_blob]
         }
-        response = requests.post(self.url,
-                                 data=json.dumps(payload),
-                                 headers=self.headers).json()
-        if 'error' in response:
-            raise ValueError(response['error'])
-        return response
+        async with aiohttp.ClientSession(headers=self.headers) as session:
+            async with session.post(self.url, ssl=False, json=payload) as response:
+                if response.status == 200:
+                    response_data = await response.json()
+                    await session.close()
+                    if 'error' in response_data:
+                        raise ValueError(response_data['error'])
+                    return response_data
 
-    def get_last_block_header(self):
+
+    async def get_last_block_header(self):
         """
         Returns last block header.
 
@@ -252,9 +274,10 @@ class Wrkzd:
                 'status': 'OK'
             }
         """
-        return self._make_request('getlastblockheader')
+        return await self._make_post('getlastblockheader')
 
-    def get_block_header_by_hash(self, hash):
+
+    async def get_block_header_by_hash(self, hash):
         """
         Returns last block header by given hash.
 
@@ -265,9 +288,10 @@ class Wrkzd:
             dict: See getlastblockheader
         """
         params = {'hash': hash}
-        return self._make_request('getblockheaderbyhash', **params)
+        return await self._make_post('getblockheaderbyhash', **params)
 
-    def get_block_header_by_height(self, height):
+
+    async def get_block_header_by_height(self, height):
         """
         Returns last block header by given hash.
 
@@ -278,9 +302,10 @@ class Wrkzd:
             dict: See getlastblockheader
         """
         params = {'height': height}
-        return self._make_request('getblockheaderbyheight', **params)
+        return await self._make_post('getblockheaderbyheight', **params)
 
-    def get_currency_id(self):
+
+    async def get_currency_id(self):
         """
         Returns unique currency identifier.
 
@@ -289,9 +314,10 @@ class Wrkzd:
 
             {'currency_id_blob': '7fb97df81221dd1366051b2...'}
         """
-        return self._make_request('getcurrencyid')
+        return await self._make_post('getcurrencyid')
 
-    def get_blocks(self, height):
+
+    async def get_blocks(self, height):
         """
         Returns information on the last 30 blocks before height (inclusive)
         
@@ -321,9 +347,9 @@ class Wrkzd:
             }
         """
         params = {'height': height}
-        return self._make_request('f_blocks_list_json', **params)
+        return await self._make_post('f_blocks_list_json', **params)
 
-    def get_block(self, block_hash):
+    async def get_block(self, block_hash):
         """
         Returns information on a single block
         
@@ -370,9 +396,9 @@ class Wrkzd:
             }
         """
         params = {'hash': block_hash}
-        return self._make_request('f_block_json', **params)
+        return await self._make_post('f_block_json', **params)
     
-    def get_transaction(self, transaction_hash):
+    async def get_transaction(self, transaction_hash):
         """
         Gets information on the single transaction
         
@@ -429,9 +455,9 @@ class Wrkzd:
             }
         """
         params = {'hash' : transaction_hash}
-        return self._make_request('f_transaction_json', **params)
+        return await self._make_post('f_transaction_json', **params)
 
-    def get_transaction_pool(self):
+    async def get_transaction_pool(self):
         """
         Gets the list of transaction hashs in the mempool.
         
@@ -452,4 +478,4 @@ class Wrkzd:
                 ]
             }
         """
-        return self._make_request('f_on_transactions_pool_json')
+        return await self._make_post('f_on_transactions_pool_json')
