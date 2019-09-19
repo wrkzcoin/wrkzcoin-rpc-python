@@ -3,7 +3,7 @@ import logging
 import aiohttp
 import asyncio
 import json
-
+from typing import Dict
 
 class Daemon:
     """
@@ -13,17 +13,20 @@ class Daemon:
     def __init__(self, host='127.0.0.1', port=17856):
         self.url = f'http://{host}:{port}'
         self.headers = {'content-type': 'application/json'}
+        self.post_url = self.url + '/json_rpc'
 
-    async def _make_post(self, method, **kwargs):
-        post_url = self.url +'/json_rpc'
+    async def _make_post(self, method, payload: Dict = None):
+
         payload = {
             'jsonrpc': '2.0',
             'method': method,
-            'params': kwargs or {}
+            'params': payload or {}
         }
+        print(payload)
         logging.debug(json.dumps(payload, indent=4))
         async with aiohttp.ClientSession(headers=self.headers) as session:
-            async with session.post(post_url, ssl=False, json=payload) as response:
+            async with session.post(self.post_url, ssl=False, json=payload) as response:
+                print(response)
                 if response.status == 200:
                     response_data = await response.json()
                     await session.close()
@@ -36,6 +39,7 @@ class Daemon:
         get_url = self.url + '/' + method
         async with aiohttp.ClientSession(headers=self.headers) as session:
             async with session.get(get_url, ssl=False) as response:
+                print(response)
                 if response.status == 200:
                     response_data = await response.json()
                     await session.close()
@@ -178,20 +182,8 @@ class Daemon:
                 "result": "4bd7dd9649a006660e113efe49691e0739d9838d044774f18732111b145347c8"
             }
         """
-        payload = {
-            'jsonrpc': '2.0',
-            'method': 'on_getblockhash',
-            'params': [block_hash]
-        }
 
-        async with aiohttp.ClientSession(headers=self.headers) as session:
-            async with session.post(self.url, ssl=False, json=payload) as response:
-                if response.status == 200:
-                    response_data = await response.json()
-                    await session.close()
-                    if 'error' in response_data:
-                        raise ValueError(response_data['error'])
-                    return response_data
+        return await self._make_post('on_getblockhash', block_hash)
 
 
     async def get_block_template(self, reserve_size, wallet_address):
@@ -215,7 +207,7 @@ class Daemon:
         """
         params = {'reserve_size': reserve_size,
                   'wallet_address': wallet_address}
-        return await self._make_post('getblocktemplate', **params)
+        return await self._make_post('getblocktemplate', params)
 
 
     async def submit_block(self, block_blob):
@@ -235,19 +227,8 @@ class Daemon:
                 }
             }
         """
-        payload = {
-            'jsonrpc': '2.0',
-            'method': 'submitblock',
-            'params': [block_blob]
-        }
-        async with aiohttp.ClientSession(headers=self.headers) as session:
-            async with session.post(self.url, ssl=False, json=payload) as response:
-                if response.status == 200:
-                    response_data = await response.json()
-                    await session.close()
-                    if 'error' in response_data:
-                        raise ValueError(response_data['error'])
-                    return response_data
+        
+        return await self._make_post('submitblock', block_blob)
 
 
     async def get_last_block_header(self):
@@ -288,7 +269,7 @@ class Daemon:
             dict: See getlastblockheader
         """
         params = {'hash': hash}
-        return await self._make_post('getblockheaderbyhash', **params)
+        return await self._make_post('getblockheaderbyhash', params)
 
 
     async def get_block_header_by_height(self, height):
@@ -302,7 +283,7 @@ class Daemon:
             dict: See getlastblockheader
         """
         params = {'height': height}
-        return await self._make_post('getblockheaderbyheight', **params)
+        return await self._make_post('getblockheaderbyheight', params)
 
 
     async def get_currency_id(self):
@@ -347,7 +328,7 @@ class Daemon:
             }
         """
         params = {'height': height}
-        return await self._make_post('f_blocks_list_json', **params)
+        return await self._make_post('f_blocks_list_json', params)
 
     async def get_block(self, block_hash):
         """
@@ -396,7 +377,7 @@ class Daemon:
             }
         """
         params = {'hash': block_hash}
-        return await self._make_post('f_block_json', **params)
+        return await self._make_post('f_block_json', params)
     
     async def get_transaction(self, transaction_hash):
         """
@@ -455,7 +436,8 @@ class Daemon:
             }
         """
         params = {'hash' : transaction_hash}
-        return await self._make_post('f_transaction_json', **params)
+        return await self._make_post('f_transaction_json', params)
+
 
     async def get_transaction_pool(self):
         """
